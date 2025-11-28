@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC Part 5 Practice (Timer & Retry)</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px; /* 余白を縮小 */
+        }
+        /* ヘッダーをコンパクトに修正 */
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            background-color: #0056b3;
+            color: white;
+            padding: 10px; /* パディングを縮小 */
+            border-radius: 8px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.4em; /* 文字サイズを縮小 */
+        }
+        header p {
+            margin: 5px 0 0 0;
+            font-size: 0.9em;
+        }
+        
+        .progress {
+            text-align: right;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        /* タイマーのデザイン */
+        #timer-display {
+            text-align: center;
+            font-weight: bold;
+            color: #d9534f;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            background: #fff;
+            padding: 5px;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+        }
+
+        .card {
+            background: white;
+            padding: 15px; /* パディングを縮小 */
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .question-text {
+            font-size: 1.1em; /* 少し小さく */
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        .options {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .options li {
+            margin-bottom: 8px;
+        }
+        .options button {
+            width: 100%;
+            text-align: left;
+            padding: 10px; /* ボタンの高さを少し縮小 */
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+        .options button:hover:not(:disabled) {
+            background-color: #e9ecef;
+        }
+        /* 正解・不正解のスタイル */
+        .correct-opt {
+            background-color: #d4edda !important;
+            border-color: #c3e6cb !important;
+            color: #155724;
+        }
+        .wrong-opt {
+            background-color: #f8d7da !important;
+            border-color: #f5c6cb !important;
+            color: #721c24;
+        }
+        
+        /* 解説エリア */
+        .explanation-area {
+            display: none; 
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ccc;
+            background-color: #fffbe6;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+        .label {
+            font-weight: bold;
+            display: block;
+            margin-top: 8px;
+            color: #0056b3;
+        }
+        .btn-next {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            text-align: center;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 10px; /* マージン調整 */
+        }
+        .btn-next:hover {
+            background-color: #218838;
+        }
+        /* リトライボタン用のスタイル */
+        .btn-retry {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-retry:hover {
+            background-color: #e0a800;
+        }
+
+        .hidden { display: none; }
+        
+        /* 結果画面 */
+        #result-screen {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>TOEIC Part 5 Practice</h1>
+    <p>1問20秒・ランダム出題</p>
+</header>
+
+<div id="start-screen" class="card" style="text-align: center;">
+    <h2>準備はいいですか？</h2>
+    <p>全問題プールからランダムに10問出題されます。</p>
+    <button onclick="startQuiz(false)" class="btn-next">スタート</button>
+</div>
+
+<div id="quiz-container" class="hidden">
+    <div id="timer-display">残り 20 秒</div>
+    <div class="progress">Question <span id="current-num">1</span> / <span id="total-q-num">10</span></div>
+    
+    <div class="card">
+        <div class="question-text" id="question-text">
+            </div>
+        <ul class="options" id="options-list">
+            </ul>
+
+        <div class="explanation-area" id="explanation-area">
+            <span class="label">【正解】</span> <span id="ans-key"></span>
+            <span class="label">【日本語訳】</span> <span id="ans-trans"></span>
+            <span class="label">【解説】</span> <span id="ans-expl"></span>
+        </div>
+    </div>
+
+    <button id="next-btn" class="btn-next hidden" onclick="nextQuestion()">次の問題へ</button>
+</div>
+
+<div id="result-screen" class="hidden card">
+    <h2>終了！</h2>
+    <p>お疲れ様でした。</p>
+    <p>あなたのスコア: <span id="score-display" style="font-size: 2em; font-weight:bold; color:#0056b3;"></span></p>
+    
+    <div id="retry-container"></div>
+    
+    <button onclick="location.reload()" class="btn-next" style="margin-top:15px;">最初からやり直す</button>
+</div>
+
+<script>
+    // ---------------------------------------------------------
+    // 問題データ (25問)
+    // ---------------------------------------------------------
+    const questionPool = [
+        {
+            id: 1,
+            text: "Mr. Tanaka ------- the annual report before the meeting started.",
+            options: ["review", "reviewed", "reviews", "reviewing"],
+            correctIndex: 1, 
+            translation: "田中氏は会議が始まる前に年次報告書を確認した。",
+            explanation: "空所には動詞が必要です。「before the meeting started（会議が始まる前に）」という過去の時制に合わせて、過去形の(B) reviewedが適切です。"
+        },
+        {
+            id: 2,
+            text: "The new software is significantly more ------- than the previous version.",
+            options: ["efficiency", "efficient", "efficiently", "efficiencies"],
+            correctIndex: 1,
+            translation: "新しいソフトウェアは以前のバージョンよりも著しく効率的だ。",
+            explanation: "be動詞(is)の後ろで、moreの後には形容詞が必要です。(B) efficient（効率的な）が正解。efficiencyは名詞、efficientlyは副詞です。"
+        },
+        {
+            id: 3,
+            text: "All employees are required to attend the safety workshop, ------- of their department.",
+            options: ["regarding", "regardless", "regard", "regards"],
+            correctIndex: 1,
+            translation: "全従業員は、部署に関わらず安全講習会への参加が求められている。",
+            explanation: "「～に関わらず」という意味の熟語 regardless of が適切です。(B)が正解。"
+        },
+        {
+            id: 4,
+            text: "Please ------- the attached document for the detailed itinerary.",
+            options: ["see", "look", "watch", "view"],
+            correctIndex: 0,
+            translation: "詳細な旅程については、添付の書類をご覧ください。",
+            explanation: "「（書類などを）参照する、見る」という意味では see または refer to が使われます。lookは look at、watchは動くものを見る際に使います。(A)が正解。"
+        },
+        {
+            id: 5,
+            text: "The construction of the new bridge is strictly on -------.",
+            options: ["schedule", "time", "date", "calendar"],
+            correctIndex: 0,
+            translation: "新しい橋の建設は厳密に予定通りに進んでいる。",
+            explanation: "on schedule で「予定通りに」という定型表現です。(A)が正解。"
+        },
+        {
+            "id": "Q006",
+            "text": "The company's new recycling initiative will be implemented in all regional offices ------- the end of the fiscal quarter.",
+            "options": ["until", "since", "by", "for"],
+            "correctIndex": 2,
+            "translation": "その会社の新しいリサイクル計画は、会計四半期の終わりまでに全ての地域支店で実施される予定です。",
+            "explanation": "空所には「〜までに」という期限を示す前置詞が必要です。byは期限を表し、未来の特定の時点までに完了することを示します。until（〜までずっと）は動作の継続を表すため不適です。"
+        },
+        {
+            "id": "Q007",
+            "text": "The marketing team's strategy was highly -------, resulting in a 20% increase in online sales.",
+            "options": ["success", "succeed", "successful", "successfully"],
+            "correctIndex": 2,
+            "translation": "マーケティングチームの戦略は非常に成功し、その結果、オンライン売上が20%増加しました。",
+            "explanation": "be動詞(was)の後ろで、副詞(highly)に修飾され、主語(strategy)の状態を表す形容詞が必要です。successful（成功した）が正解です。"
+        },
+        {
+            "id": "Q008",
+            "text": "Applicants must submit two letters of ------- from former employers or professors.",
+            "options": ["reference", "referral", "referee", "refer"],
+            "correctIndex": 0,
+            "translation": "応募者は、以前の雇用主または教授からの2通の推薦状を提出しなければなりません。",
+            "explanation": "letters of referenceで「推薦状」という意味の複合名詞（熟語）になります。refereeは推薦人または審判、referralは紹介状・委託を意味します。"
+        },
+        {
+            "id": "Q009",
+            "text": "The presentation clearly ------- the key features of the upcoming product launch.",
+            "options": ["outlining", "outlined", "outlined", "outline"],
+            "correctIndex": 1,
+            "translation": "そのプレゼンテーションは、間近に迫った製品発売の主要な特徴を明確に概説しました。",
+            "explanation": "主語(The presentation)と目的語(the key features...)があるので、空所には過去の出来事を表す他動詞の過去形が必要です。outlined（概説した）が最も適切です。"
+        },
+        {
+            "id": "Q010",
+            "text": "Due to the storm, the delivery of office supplies has been temporarily -------.",
+            "options": ["postponed", "delayed", "put", "suspended"],
+            "correctIndex": 3,
+            "translation": "嵐のため、事務用品の配送は一時的に中断されています。",
+            "explanation": "配送という行為の「一時的な中断」には suspended が最も自然です。postponed（延期された）は具体的な日にちへの変更、delayed（遅延した）は時間的な遅れを指します。"
+        },
+        {
+            "id": "Q011",
+            "text": "The manager asked the team to ------- the project proposal before submitting it to the board.",
+            "options": ["review", "to review", "reviewed", "reviews"],
+            "correctIndex": 0,
+            "translation": "マネージャーは、プロジェクト提案書を役員会に提出する前に、チームにそれを見直すように頼みました。",
+            "explanation": "ask the team to reviewの to review の to が省略された形と考えることもできますが、文法的な整合性から、ここでは使役動詞的用法（ask O 原形不定詞）として動詞の原形 (A) review が適切です。"
+        },
+        {
+            "id": "Q012",
+            "text": "The merger will create one of the most financially ------- corporations in the industry.",
+            "options": ["sound", "sounds", "sounded", "sounding"],
+            "correctIndex": 0,
+            "translation": "その合併は、業界で最も財政的に健全な企業の一つを生み出すでしょう。",
+            "explanation": "financiallyという副詞の後に形容詞が必要です。soundには「健全な、確かな」という意味の形容詞があり、 financially sound で「財政的に健全な」という意味になります。"
+        },
+        {
+            "id": "Q013",
+            "text": "The new security policy is designed to protect customer data ------- unauthorized access.",
+            "options": ["against", "over", "within", "through"],
+            "correctIndex": 0,
+            "translation": "新しいセキュリティポリシーは、不正なアクセスから顧客データを守るために設計されています。",
+            "explanation": "protect A against B で「BからAを守る」という意味になり、前置詞 (A) against が適切です。"
+        },
+        {
+            "id": "Q014",
+            "text": "Before using the industrial printer, please familiarize ------- with the operating manual.",
+            "options": ["yours", "yourself", "your", "yourselves"],
+            "correctIndex": 1,
+            "translation": "業務用プリンターを使用する前に、操作マニュアルで使い方をよく理解してください。",
+            "explanation": "familiarize A with B（AにBを熟知させる）という動詞句で、主語が命令文の you であるため、目的語には再帰代名詞 (B) yourself が必要です。"
+        },
+        {
+            "id": "Q015",
+            "text": "Due to unexpectedly high enrollment, the university decided to add an ------- section to the chemistry course.",
+            "options": ["extra", "surplus", "redundant", "excessive"],
+            "correctIndex": 0,
+            "translation": "予想外に登録者が多かったため、大学は化学の授業に追加のクラスを設けることにしました。",
+            "explanation": "「追加の」という意味の形容詞 (A) extra が最も自然です。surplus（余剰の）、redundant（余分な、不必要な）、excessive（過度の）は文脈に合いません。"
+        },
+        {
+            "id": "Q016",
+            "text": "The company's new policy dictates that all reimbursement claims must be submitted ------- 30 days of the expense being incurred.",
+            "options": ["within", "among", "despite", "beyond"],
+            "correctIndex": 0,
+            "translation": "会社の新しい規定では、すべての払い戻し請求は費用が発生してから30日以内に提出されなければならないと定められています。",
+            "explanation": "期間の制限を示すには「〜以内に」を意味する前置詞 (A) within が適切です。amongは3者以上の中、despiteは〜にもかかわらず、beyondは〜を超えて、という意味で文脈に合いません。"
+        },
+        {
+            "id": "Q017",
+            "text": "We need to find a more ------- solution to our production issues to reduce long-term costs.",
+            "options": ["effect", "effective", "effectively", "effected"],
+            "correctIndex": 1,
+            "translation": "長期的なコストを削減するため、生産上の問題に対するより効果的な解決策を見つける必要があります。",
+            "explanation": "名詞 solution を修飾する形容詞が必要です。moreに続く形容詞 (B) effective（効果的な）が正解です。effectは名詞、effectivelyは副詞です。"
+        },
+        {
+            "id": "Q018",
+            "text": "The seminar was beneficial, ------- the limited time available for questions and answers.",
+            "options": ["even though", "in spite of", "consequently", "nevertheless"],
+            "correctIndex": 1,
+            "translation": "質問と回答に使える時間が限られていたにもかかわらず、そのセミナーは有益でした。",
+            "explanation": "「〜にもかかわらず」という意味で、後ろに名詞句（the limited time...）を伴う前置詞句 (B) in spite of が適切です。even though（接続詞）、consequently/nevertheless（副詞）は文型が合いません。"
+        },
+        {
+            "id": "Q019",
+            "text": "Please remember to ------- your badge at the entrance before proceeding to the main conference hall.",
+            "options": ["swiped", "swiping", "swipe", "to swipe"],
+            "correctIndex": 2,
+            "translation": "メインの会議場に進む前に、入口で必ずバッジをスワイプ（かざすなど）してください。",
+            "explanation": "remember to do（〜することを忘れないで）という構文で、toの後に続く動詞の原形 (C) swipe が正解です。"
+        },
+        {
+            "id": "Q020",
+            "text": "The restaurant is popular ------- its unique blend of traditional and modern cuisine.",
+            "options": ["due to", "in spite of", "regarding", "unless"],
+            "correctIndex": 0,
+            "translation": "そのレストランは、伝統的料理と現代料理の独自の融合で人気があります。",
+            "explanation": "「〜が理由で、〜のおかげで」という意味を表し、後ろに名詞句を伴う前置詞句 (A) due to が適切です。"
+        },
+        {
+            "id": "Q021",
+            "text": "The board of directors is currently reviewing several proposals for the ------- of the new factory.",
+            "options": ["locates", "location", "locate", "locating"],
+            "correctIndex": 1,
+            "translation": "取締役会は現在、新工場の場所に関するいくつかの提案を審査しています。",
+            "explanation": "前置詞 for の目的語として名詞が必要です。「工場の場所」という意味を表す (B) location が正解です。locates/locateは動詞、locatingは動名詞または現在分詞です。"
+        },
+        {
+            "id": "Q022",
+            "text": "All employees who wish to attend the advanced training session must register -------.",
+            "options": ["prompt", "promptly", "prompter", "promptness"],
+            "correctIndex": 1,
+            "translation": "上級トレーニングセッションへの参加を希望する全従業員は、速やかに登録しなければなりません。",
+            "explanation": "動詞 register（登録する）を修飾する副詞が必要です。「速やかに」を意味する (B) promptly が正解です。"
+        },
+        {
+            "id": "Q023",
+            "text": "Please be advised that the maintenance work will continue ------- 6:00 PM tomorrow.",
+            "options": ["until", "since", "during", "while"],
+            "correctIndex": 0,
+            "translation": "整備作業は明日の午後6時まで続く予定ですので、ご注意ください。",
+            "explanation": "動作が特定の時点まで継続することを示す前置詞 (A) until が適切です。sinceは過去のある時点から継続、duringは期間中、whileは接続詞で文を繋ぎます。"
+        },
+        {
+            "id": "Q024",
+            "text": "The newly hired technician proved to be highly ------- in troubleshooting network issues.",
+            "options": ["competent", "competence", "competently", "competitors"],
+            "correctIndex": 0,
+            "translation": "新しく採用された技術者は、ネットワークの問題解決において非常に有能であることが証明されました。",
+            "explanation": "be動詞(to be)の後ろで、副詞(highly)に修飾され、主語の状態を表す形容詞が必要です。(A) competent（有能な）が正解です。competenceは名詞です。"
+        },
+        {
+            "id": "Q025",
+            "text": "Management announced that the quarterly profits were considerably ------- than predicted.",
+            "options": ["high", "higher", "highly", "highest"],
+            "correctIndex": 1,
+            "translation": "経営陣は、四半期ごとの利益が予測されていたよりもかなり高かったと発表しました。",
+            "explanation": "比較を表す than があるため、比較級が必要です。(B) higher が正解です。considerably（かなり）は比較級を強調する副詞です。"
+        },
+{
+            "id": "Q026",
+            "text": "The seminar was held in the largest conference room to ------- the high number of registered participants.",
+            "options": ["accommodate", "comply", "adjust", "resolve"],
+            "correctIndex": 0,
+            "translation": "登録参加者の多さに対応するため、そのセミナーは最大の会議室で開催された。",
+            "explanation": "動詞の意味問題。「〜を収容する」「〜に対応する」という意味の(A) accommodateが適切です。"
+        },
+        {
+            "id": "Q027",
+            "text": "Due to recent budget cuts, the department's staffing needs have become ------- more complicated.",
+            "options": ["signify", "significant", "significance", "significantly"],
+            "correctIndex": 3,
+            "translation": "最近の予算削減により、その部署の人員配置の必要性は著しく複雑になっている。",
+            "explanation": "形容詞 complicated を修飾するため、副詞 (D) significantly（著しく）が適切です。"
+        },
+        {
+            "id": "Q028",
+            "text": "Please confirm the delivery details ------- the end of the business day.",
+            "options": ["by", "until", "for", "since"],
+            "correctIndex": 0,
+            "translation": "業務日の終わりまでに、配送の詳細を確認してください。",
+            "explanation": "「〜までに」という期限を表す前置詞 (A) by が適切です。untilは動作の継続を意味します。"
+        },
+        {
+            "id": "Q029",
+            "text": "Ms. Sato ------- a sales record last month that exceeded all previous quarters.",
+            "options": ["achieve", "has achieved", "achieved", "is achieving"],
+            "correctIndex": 2,
+            "translation": "佐藤さんは先月、過去の全四半期を上回る販売記録を達成した。",
+            "explanation": "「last month（先月）」という過去の特定の時点を示す表現があるため、動詞の過去形 (C) achieved が適切です。"
+        },
+        {
+            "id": "Q030",
+            "text": "------- the high operating costs, the company decided to outsource its manufacturing.",
+            "options": ["Although", "In spite of", "Because of", "Since"],
+            "correctIndex": 2,
+            "translation": "高い運営コストのため、その会社は製造部門を外部委託することに決めた。",
+            "explanation": "空所の後には名詞句が続いているため、「〜のため」という意味の前置詞句 (C) Because of が適切です。"
+        },
+        {
+            "id": "Q031",
+            "text": "The new manager is responsible ------- overseeing all daily operations of the branch.",
+            "options": ["of", "to", "for", "with"],
+            "correctIndex": 2,
+            "translation": "新しいマネージャーは、支店の全ての日々の運営を監督する責任がある。",
+            "explanation": "be responsible for 〜ing で「〜する責任がある」という定型表現です。(C) for が正解です。"
+        },
+        {
+            "id": "Q032",
+            "text": "Delegates were asked to submit ------- research proposals by the deadline.",
+            "options": ["they", "their", "them", "theirs"],
+            "correctIndex": 1,
+            "translation": "代表者たちは、締め切りまでに自分たちの研究提案書を提出するように求められた。",
+            "explanation": "名詞 proposals を修飾する所有格の代名詞 (B) their が適切です。"
+        },
+        {
+            "id": "Q033",
+            "text": "The supervisor encouraged the staff ------- creative solutions to the complex problem.",
+            "options": ["finding", "find", "to find", "found"],
+            "correctIndex": 2,
+            "translation": "上司は、複雑な問題に対する創造的な解決策を見つけるようスタッフを奨励した。",
+            "explanation": "encourage O to do（Oに〜するよう奨励する）という構文です。不定詞 (C) to find が正解です。"
+        },
+        {
+            "id": "Q034",
+            "text": "It is ------- that all safety protocols be followed strictly during the laboratory testing.",
+            "options": ["essential", "dependable", "considerable", "voluntary"],
+            "correctIndex": 0,
+            "translation": "実験室でのテスト中、すべての安全手順が厳守されることが不可欠です。",
+            "explanation": "形式主語 (It is ...) の構文で、「不可欠な」という意味の (A) essential が適切です。"
+        },
+        {
+            "id": "Q035",
+            "text": "The product launch date was unexpectedly successful, exceeding the company's initial -------.",
+            "options": ["expect", "expected", "expecting", "expectations"],
+            "correctIndex": 3,
+            "translation": "その製品発売は予想外に成功し、会社の当初の期待を上回った。",
+            "explanation": "形容詞 initial の後ろに続く名詞が必要です。「期待」という意味の複数名詞 (D) expectations が適切です。"
+        },
+        {
+            "id": "Q036",
+            "text": "The company’s recent stock performance has been surprisingly -------.",
+            "options": ["volatile", "volatility", "volatilize", "volatilities"],
+            "correctIndex": 0,
+            "translation": "その会社の最近の株価の動向は、驚くほど不安定である。",
+            "explanation": "be動詞の後ろで主語の状態を表す形容詞が必要です。(A) volatile（不安定な）が正解です。"
+        },
+        {
+            "id": "Q037",
+            "text": "The budget proposal was rejected; -------, the project will be delayed indefinitely.",
+            "options": ["moreover", "otherwise", "consequently", "nevertheless"],
+            "correctIndex": 2,
+            "translation": "予算案は否決されました。その結果、プロジェクトは無期限に延期されるでしょう。",
+            "explanation": "前の文の結果を示す副詞が必要です。「その結果」を意味する (C) consequently が適切です。"
+        },
+        {
+            "id": "Q038",
+            "text": "The CEO’s resignation came as a complete ------- to the entire staff.",
+            "options": ["surprise", "shocking", "surprisingly", "surprised"],
+            "correctIndex": 0,
+            "translation": "CEOの辞任は、全スタッフにとって完全な驚きでした。",
+            "explanation": "a complete... to...の形から、空所には名詞が必要です。(A) surprise が正解です。"
+        },
+        {
+            "id": "Q039",
+            "text": "Please submit your request for time off ------- least one week in advance.",
+            "options": ["at", "in", "by", "from"],
+            "correctIndex": 0,
+            "translation": "休暇の申請は、少なくとも1週間前までにご提出ください。",
+            "explanation": "「少なくとも」という意味の定型表現 at least が適切です。(A)が正解です。"
+        },
+        {
+            "id": "Q040",
+            "text": "The engineers ------- the manufacturing process since the quality control issues were first identified.",
+            "options": ["are improving", "improved", "have been improving", "improve"],
+            "correctIndex": 2,
+            "translation": "品質管理の問題が特定されて以来、エンジニアたちは製造プロセスを改善し続けている。",
+            "explanation": "since...（〜以来）があるため、継続を示す現在完了進行形 (C) have been improving が適切です。"
+        },
+        {
+            "id": "Q041",
+            "text": "The newly established policy mandates the immediate ------- of sensitive customer information.",
+            "options": ["protection", "protective", "protectively", "protects"],
+            "correctIndex": 0,
+            "translation": "新しく制定された方針は、機密顧客情報の即時保護を義務付けている。",
+            "explanation": "immediate（即時の）という形容詞の後には名詞が必要です。(A) protection（保護）が正解です。"
+        },
+        {
+            "id": "Q042",
+            "text": "The software update is designed to ------- system performance and enhance user experience.",
+            "options": ["optimize", "optimistic", "optimization", "optimum"],
+            "correctIndex": 0,
+            "translation": "この更新は、システム性能を最適化し、ユーザー体験を向上させるように設計されています。",
+            "explanation": "toの後に続く動詞の原形が必要です。(A) optimize（最適化する）が正解です。"
+        },
+        {
+            "id": "Q043",
+            "text": "The final contract must be signed by both parties ------- to starting the construction.",
+            "options": ["previous", "prior", "beforehand", "later"],
+            "correctIndex": 1,
+            "translation": "最終契約書は、建設を開始するに先立って両当事者によって署名されなければならない。",
+            "explanation": "prior to... で「〜に先立って」という意味の熟語になります。(B) prior が正解です。"
+        },
+        {
+            "id": "Q044",
+            "text": "Employees who have finished their tasks should assist ------- with the filing.",
+            "options": ["another", "others", "other", "them"],
+            "correctIndex": 1,
+            "translation": "自分の仕事を終えた従業員は、ファイリングで他の従業員を手伝うべきです。",
+            "explanation": "「他の人々」という意味の代名詞 (B) others が適切です。"
+        },
+        {
+            "id": "Q045",
+            "text": "The manufacturing facility operates with the utmost ------- to ensure product quality.",
+            "options": ["precise", "precisely", "precision", "preciser"],
+            "correctIndex": 2,
+            "translation": "その製造施設は、製品品質を保証するために最大限の正確さをもって稼働している。",
+            "explanation": "utmost（最大限の）の後に続く名詞が必要です。(C) precision（正確さ）が正解です。"
+        },
+        {
+            "id": "Q046",
+            "text": "Management decided to ------- the new policy immediately to address customer complaints.",
+            "options": ["implementing", "to implement", "implement", "implemented"],
+            "correctIndex": 2,
+            "translation": "経営陣は、顧客の苦情に対処するため、新しい方針を直ちに実行することを決定した。",
+            "explanation": "decide to do の構文で、to の後には動詞の原形が必要です。(C) implement が正解です。"
+        },
+        {
+            "id": "Q047",
+            "text": "The seminar offers a ------- overview of the latest trends in digital marketing.",
+            "options": ["comprehensive", "comprehension", "comprehend", "comprehensively"],
+            "correctIndex": 0,
+            "translation": "そのセミナーは、デジタルマーケティングの最新動向について包括的な概要を提供します。",
+            "explanation": "名詞 overview を修飾する形容詞が必要です。(A) comprehensive（包括的な）が正解です。"
+        },
+        {
+            "id": "Q048",
+            "text": "The marketing campaign proved highly successful, ------- it was relatively inexpensive.",
+            "options": ["despite", "although", "owing to", "in addition to"],
+            "correctIndex": 1,
+            "translation": "そのキャンペーンは、費用が比較的小さかったにもかかわらず、非常に成功した。",
+            "explanation": "空所の後には節（主語+動詞）が続いているため、接続詞 (B) although が適切です。"
+        },
+        {
+            "id": "Q049",
+            "text": "The report highlights the urgent need for greater ------- in data management procedures.",
+            "options": ["consistent", "consistently", "consistency", "consist"],
+            "correctIndex": 2,
+            "translation": "その報告書は、データ管理手順におけるより大きな一貫性の緊急の必要性を強調している。",
+            "explanation": "greaterという形容詞の後には名詞が必要です。(C) consistency（一貫性）が正解です。"
+        },
+        {
+            "id": "Q050",
+            "text": "Reservations for the event can be made online or ------- phone.",
+            "options": ["on", "by", "with", "at"],
+            "correctIndex": 1,
+            "translation": "イベントの予約は、オンラインまたは電話で行うことができます。",
+            "explanation": "by phone で「電話で」という手段を示す定型表現です。(B)が正解です。"
+        },
+        {
+            "id": "Q051",
+            "text": "The new equipment is ------- with the existing network infrastructure.",
+            "options": ["compatible", "complicate", "compliant", "complete"],
+            "correctIndex": 0,
+            "translation": "新しい機器は、既存のネットワークインフラと互換性がある。",
+            "explanation": "be compatible with... で「〜と互換性がある」という意味になります。(A) compatible が正解です。"
+        },
+        {
+            "id": "Q052",
+            "text": "The success of the renovation project will be highly ------- on the timely delivery of materials.",
+            "options": ["dependent", "depend", "dependence", "dependently"],
+            "correctIndex": 0,
+            "translation": "改修プロジェクトの成功は、資材のタイムリーな配送に大きく左右されるでしょう。",
+            "explanation": "be dependent on... で「〜に依存している」という意味になります。(A) dependent が正解です。"
+        },
+        {
+            "id": "Q053",
+            "text": "By the time the new fiscal year starts, the marketing team ------- its current campaign.",
+            "options": ["will complete", "is completing", "will have completed", "completed"],
+            "correctIndex": 2,
+            "translation": "新年度が始まる時までに、マーケティングチームは現在のキャンペーンを完了しているでしょう。",
+            "explanation": "未来のある時点までの完了を示すため、未来完了形 (C) will have completed が適切です。"
+        },
+        {
+            "id": "Q054",
+            "text": "The company has maintained a policy of strict ------- to all environmental regulations.",
+            "options": ["adherence", "adhering", "adhered", "adherent"],
+            "correctIndex": 0,
+            "translation": "その会社は、すべての環境規制に対する厳格な順守の方針を維持しています。",
+            "explanation": "strict（厳格な）という形容詞の後に続く名詞が必要です。(A) adherence（順守）が正解です。"
+        },
+        {
+            "id": "Q055",
+            "text": "The proposal was found to be the ------- of the three options reviewed by the committee.",
+            "options": ["practical", "practically", "more practical", "most practical"],
+            "correctIndex": 3,
+            "translation": "その提案は、審査された3つの選択肢の中で最も実用的なものであると判明した。",
+            "explanation": "3つの選択肢の中で比較しているため、最上級 (D) most practical が適切です。"
+        },
+        {
+            "id": "Q056",
+            "text": "The committee emphasized the ------- of completing the merger by the end of the year.",
+            "options": ["important", "importantly", "importance", "importer"],
+            "correctIndex": 2,
+            "translation": "委員会は、年末までに合併を完了させることの重要性を強調した。",
+            "explanation": "the... of の形で、空所には名詞が必要です。(C) importance（重要性）が正解です。"
+        },
+        {
+            "id": "Q057",
+            "text": "The training session was initially scheduled for Monday; -------, it has been postponed until Wednesday.",
+            "options": ["however", "furthermore", "thus", "instead"],
+            "correctIndex": 0,
+            "translation": "研修は当初月曜日の予定でしたが、しかしながら、水曜日まで延期されました。",
+            "explanation": "逆接の関係にあるため、接続副詞 (A) however（しかしながら）が適切です。"
+        },
+        {
+            "id": "Q058",
+            "text": "The client requested that the final report be delivered in an ------- and easy-to-read format.",
+            "options": ["accessible", "access", "accessibly", "accession"],
+            "correctIndex": 0,
+            "translation": "クライアントは、最終報告書が利用しやすく読みやすい形式で提出されることを要求した。",
+            "explanation": "名詞 format を修飾する形容詞が必要です。(A) accessible（利用しやすい）が正解です。"
+        },
+        {
+            "id": "Q059",
+            "text": "The construction noise continued all night, much ------- the dismay of the hotel guests.",
+            "options": ["to", "in", "by", "with"],
+            "correctIndex": 0,
+            "translation": "建設騒音が一晩中続き、ホテルの宿泊客の多くが落胆した。",
+            "explanation": "much to one's dismay で「（人）が落胆したことに」という定型表現です。(A) to が適切です。"
+        },
+        {
+            "id": "Q060",
+            "text": "Since joining the team, Mr. Lee ------- several key process improvements.",
+            "options": ["introduced", "has introduced", "was introducing", "introduces"],
+            "correctIndex": 1,
+            "translation": "チームに加わって以来、リーさんはいくつかの重要なプロセス改善を導入している。",
+            "explanation": "Since...（〜以来）があるため、現在完了形 (B) has introduced が適切です。"
+        },
+        {
+            "id": "Q061",
+            "text": "The company’s growth strategy focuses on the ------- of new markets in Asia.",
+            "options": ["explore", "exploratory", "exploration", "exploring"],
+            "correctIndex": 2,
+            "translation": "その会社の成長戦略は、アジアの新しい市場の開拓に焦点を当てている。",
+            "explanation": "the... of の形で、空所には名詞が必要です。(C) exploration（開拓、探査）が正解です。"
+        },
+        {
+            "id": "Q062",
+            "text": "Applicants must demonstrate a strong ------- of the programming language required for the position.",
+            "options": ["command", "commanding", "commanded", "commander"],
+            "correctIndex": 0,
+            "translation": "応募者は、その職務に必要なプログラミング言語の高い運用能力を示す必要がある。",
+            "explanation": "command of で「〜の運用能力、言語を操る力」という意味になります。(A) command が正解です。"
+        },
+        {
+            "id": "Q063",
+            "text": "The revised schedule will be distributed to all department heads ------- the meeting.",
+            "options": ["followed by", "subsequent to", "in place of", "aside from"],
+            "correctIndex": 1,
+            "translation": "改訂されたスケジュールは、会議の後にすべての部署長に配布される予定です。",
+            "explanation": "subsequent to は「〜の後に」という意味の前置詞句です。(B) が正解です。"
+        },
+        {
+            "id": "Q064",
+            "text": "The new security features are designed to protect both the user and ------- data.",
+            "options": ["its", "their", "it", "them"],
+            "correctIndex": 0,
+            "translation": "新しいセキュリティ機能は、ユーザーとそのデータを保護するように設計されている。",
+            "explanation": "the user（単数扱い）またはシステム自体を指す所有格として (A) its が適切です。"
+        },
+        {
+            "id": "Q065",
+            "text": "The marketing team worked ------- to prepare for the product launch in a short timeframe.",
+            "options": ["diligent", "diligence", "diligently", "diligenter"],
+            "correctIndex": 2,
+            "translation": "マーケティングチームは、短い期間で製品発売の準備をするために勤勉に働いた。",
+            "explanation": "動詞 worked を修飾するため、副詞 (C) diligently（勤勉に）が正解です。"
+        },
+        {
+            "id": "Q066",
+            "text": "The board has authorized the CEO ------- negotiations with the merging company.",
+            "options": ["to commence", "commence", "commencing", "commences"],
+            "correctIndex": 0,
+            "translation": "取締役会は、合併会社との交渉を開始するようCEOに許可した。",
+            "explanation": "authorize O to do（Oに〜することを許可する）の構文です。(A) to commence が正解です。"
+        },
+        {
+            "id": "Q067",
+            "text": "Due to a technical -------, the live streaming of the conference was momentarily interrupted.",
+            "options": ["malfunction", "deficiency", "faulty", "failure"],
+            "correctIndex": 0,
+            "translation": "技術的な誤作動により、会議のライブ配信が一時的に中断された。",
+            "explanation": "「誤作動、故障」という意味の (A) malfunction が最も適切です。"
+        },
+        {
+            "id": "Q068",
+            "text": "We will ship the order immediately ------- we receive confirmation of your payment.",
+            "options": ["as soon as", "unless", "even though", "in case of"],
+            "correctIndex": 0,
+            "translation": "支払いの確認を受け取り次第、直ちに注文品を発送いたします。",
+            "explanation": "「〜し次第」という接続詞句 (A) as soon as が適切です。"
+        },
+        {
+            "id": "Q069",
+            "text": "The company guarantees the ------- of all personal information provided by its customers.",
+            "options": ["confidential", "confide", "confidentiality", "confidentially"],
+            "correctIndex": 2,
+            "translation": "その会社は、顧客から提供されたすべての個人情報の機密性を保証します。",
+            "explanation": "the... of の形で、空所には名詞が必要です。(C) confidentiality（機密性）が正解です。"
+        },
+        {
+            "id": "Q070",
+            "text": "The final decision will be made ------- the input from all stakeholders.",
+            "options": ["in accordance with", "contrary to", "in excess of", "regardless"],
+            "correctIndex": 0,
+            "translation": "最終決定は、すべての利害関係者からの意見に従って行われるでしょう。",
+            "explanation": "「〜に従って」という意味の (A) in accordance with が適切です。"
+        },
+        {
+            "id": "Q071",
+            "text": "The laboratory test results will be used to ------- the safety of the new chemical compound.",
+            "options": ["verify", "verification", "verified", "verifiable"],
+            "correctIndex": 0,
+            "translation": "実験室のテスト結果は、新しい化合物の安全性を検証するために使用される。",
+            "explanation": "toの後に続く動詞の原形が必要です。(A) verify（検証する）が正解です。"
+        },
+        {
+            "id": "Q072",
+            "text": "The company offers a generous benefits package to attract highly ------- professionals.",
+            "options": ["qualify", "qualified", "qualification", "qualifying"],
+            "correctIndex": 1,
+            "translation": "その会社は、非常に有能な専門家を惹きつけるために手厚い福利厚生を提供している。",
+            "explanation": "professionals を修飾する形容詞（分詞）が必要です。(B) qualified（適格な、有能な）が正解です。"
+        },
+        {
+            "id": "Q073",
+            "text": "If the weather holds up, we ------- the outdoor market this weekend.",
+            "options": ["visited", "will visit", "had visited", "visiting"],
+            "correctIndex": 1,
+            "translation": "もし天気が良ければ、今週末、私たちは屋外市場を訪れるでしょう。",
+            "explanation": "条件節が現在形なので、主節は未来形 (B) will visit が適切です。"
+        },
+        {
+            "id": "Q074",
+            "text": "The manager asked the employee to ------- all sales figures before presenting them to the executive team.",
+            "options": ["double-check", "double-checked", "double-checking", "double-checks"],
+            "correctIndex": 0,
+            "translation": "マネージャーは、幹部に提示する前にすべての売上数値を再確認するよう従業員に頼んだ。",
+            "explanation": "ask O to do の構文で、toの後には動詞の原形が必要です。(A) double-check が正解です。"
+        },
+        {
+            "id": "Q075",
+            "text": "The proposal was described as -------, despite the detailed research that supported it.",
+            "options": ["ambition", "ambitious", "ambitiously", "ambitions"],
+            "correctIndex": 1,
+            "translation": "詳細な調査に裏打ちされていたにもかかわらず、その提案は野心的すぎると評された。",
+            "explanation": "be動詞の後ろで主語を説明する形容詞が必要です。(B) ambitious（野心的な）が正解です。"
+        },
+        {
+            "id": "Q076",
+            "text": "The seminar presenter spoke so ------- that everyone in the large hall could hear him clearly.",
+            "options": ["force", "forceful", "forcefully", "forcing"],
+            "correctIndex": 2,
+            "translation": "セミナーの発表者は、広いホールにいる全員がはっきり聞こえるように、非常に力強く話した。",
+            "explanation": "動詞 spoke を修飾するため、副詞 (C) forcefully（力強く）が適切です。"
+        },
+        {
+            "id": "Q077",
+            "text": "Before the decision is finalized, the team must ------- all potential risks.",
+            "options": ["mitigate", "assume", "assess", "claim"],
+            "correctIndex": 2,
+            "translation": "決定が最終化される前に、チームはすべての潜在的なリスクを評価しなければならない。",
+            "explanation": "「リスクを評価する」という意味の動詞 (C) assess が適切です。"
+        },
+        {
+            "id": "Q078",
+            "text": "------- the company is expanding globally, it will need to hire more multilingual staff.",
+            "options": ["Despite", "As", "Due to", "Unless"],
+            "correctIndex": 1,
+            "translation": "会社が世界的に拡大しているので、より多くの多言語対応スタッフを雇う必要があるだろう。",
+            "explanation": "節を導く接続詞が必要です。「〜なので」という理由を表す (B) As が適切です。"
+        },
+        {
+            "id": "Q079",
+            "text": "We ------- the sales forecast results at the next quarterly meeting.",
+            "options": ["discussed", "are discussing", "have discussed", "will be discussing"],
+            "correctIndex": 3,
+            "translation": "私たちは次の四半期会議で、販売予測の結果を話し合っているところでしょう。",
+            "explanation": "未来の特定の時点における進行中の動作を示すため、未来進行形 (D) will be discussing が適切です。"
+        },
+        {
+            "id": "Q080",
+            "text": "The new manager is known for his ------- approach to problem-solving.",
+            "options": ["collaborate", "collaborative", "collaboration", "collaborator"],
+            "correctIndex": 1,
+            "translation": "新しいマネージャーは、問題解決に対する協調的なアプローチで知られている。",
+            "explanation": "名詞 approach を修飾する形容詞が必要です。(B) collaborative（協調的な）が正解です。"
+        },
+        {
+            "id": "Q081",
+            "text": "The meeting was canceled ------- the sudden illness of the key speaker.",
+            "options": ["in addition to", "instead of", "on behalf of", "due to"],
+            "correctIndex": 3,
+            "translation": "その会議は、主要な講演者の突然の病気が原因で中止された。",
+            "explanation": "「〜が原因で」という意味の前置詞句 (D) due to が適切です。"
+        },
+        {
+            "id": "Q082",
+            "text": "The board approved the funds for the expansion project without any -------.",
+            "options": ["reservation", "hesitation", "doubt", "objection"],
+            "correctIndex": 3,
+            "translation": "取締役会は、何ら異議なく、拡張プロジェクトのための資金を承認した。",
+            "explanation": "「異議」という意味の (D) objection が文脈に合います。"
+        },
+        {
+            "id": "Q083",
+            "text": "A detailed ------- of the project schedule will be provided next week.",
+            "options": ["revise", "revision", "revising", "revised"],
+            "correctIndex": 1,
+            "translation": "プロジェクトスケジュールの詳細な改訂版が来週提供される予定です。",
+            "explanation": "形容詞 detailed の後に続く名詞が必要です。(B) revision（改訂、改訂版）が正解です。"
+        },
+        {
+            "id": "Q084",
+            "text": "The presentation, ------- by the marketing team, was highly praised.",
+            "options": ["prepare", "to prepare", "prepared", "preparing"],
+            "correctIndex": 2,
+            "translation": "マーケティングチームによって準備されたそのプレゼンテーションは、高く評価された。",
+            "explanation": "受動の意味を持つ過去分詞 (C) prepared が前の名詞を修飾します。"
+        },
+        {
+            "id": "Q085",
+            "text": "The company decided to ------- the production line due to repeated machinery failures.",
+            "options": ["dismantle", "arrange", "install", "operate"],
+            "correctIndex": 0,
+            "translation": "機械の故障が繰り返されたため、会社は生産ラインを解体することを決定した。",
+            "explanation": "「解体する」という意味の (A) dismantle が適切です。"
+        },
+        {
+            "id": "Q086",
+            "text": "The project deadline is fast approaching; -------, we must work overtime to ensure timely completion.",
+            "options": ["however", "similarly", "therefore", "nevertheless"],
+            "correctIndex": 2,
+            "translation": "締め切りが近づいています。したがって、期限内に完了させるために残業しなければなりません。",
+            "explanation": "結果を示す接続副詞 (C) therefore（したがって）が適切です。"
+        },
+        {
+            "id": "Q087",
+            "text": "The CEO thanked the staff ------- for their efforts during the busy season.",
+            "options": ["personal", "personally", "personnel", "personification"],
+            "correctIndex": 1,
+            "translation": "CEOは、多忙な時期におけるスタッフの努力に対し、個人的に感謝の意を述べた。",
+            "explanation": "動詞 thanked を修飾する副詞 (B) personally（個人的に）が適切です。"
+        },
+        {
+            "id": "Q088",
+            "text": "The conference registration form can be found on the company's website, or you can request ------- by email.",
+            "options": ["it", "its", "them", "those"],
+            "correctIndex": 0,
+            "translation": "登録フォームはウェブサイトにあります。あるいは、メールでそれを請求できます。",
+            "explanation": "単数名詞 registration form を受ける代名詞 (A) it が適切です。"
+        },
+        {
+            "id": "Q089",
+            "text": "We are seeking a highly ------- candidate for the director position.",
+            "options": ["qualified", "qualifier", "quality", "qualifies"],
+            "correctIndex": 0,
+            "translation": "私たちは取締役のポストに、高度に適格な候補者を求めている。",
+            "explanation": "名詞 candidate を修飾する形容詞 (A) qualified（適格な）が正解です。"
+        },
+        {
+            "id": "Q090",
+            "text": "The manager's retirement announcement came as a surprise ------- his staff.",
+            "options": ["with", "to", "for", "by"],
+            "correctIndex": 1,
+            "translation": "マネージャーの退職発表は、彼のスタッフにとって驚きだった。",
+            "explanation": "surprise to... で「〜にとっての驚き」となります。(B) to が正解です。"
+        },
+        {
+            "id": "Q091",
+            "text": "The company needs to make a firm ------- to reducing its carbon footprint.",
+            "options": ["commit", "committed", "commitment", "committing"],
+            "correctIndex": 2,
+            "translation": "その会社は、二酸化炭素排出量を削減するために、確固たる公約をする必要がある。",
+            "explanation": "形容詞 firm の後に続く名詞が必要です。(C) commitment（公約、約束）が正解です。"
+        },
+        {
+            "id": "Q092",
+            "text": "The contract will be terminated ------- either party fails to meet the agreed terms.",
+            "options": ["in spite of", "as long as", "in the event that", "due to"],
+            "correctIndex": 2,
+            "translation": "いずれかの当事者が条件を満たさなかった場合に、契約は終了されます。",
+            "explanation": "「〜の場合には」という条件を示す接続詞句 (C) in the event that が適切です。"
+        },
+        {
+            "id": "Q093",
+            "text": "You ------- submit the expense report by Friday, or the reimbursement will be delayed.",
+            "options": ["must", "would", "may", "can"],
+            "correctIndex": 0,
+            "translation": "経費報告書は金曜日までに提出しなければなりません。そうしないと、払い戻しが遅れます。",
+            "explanation": "強い義務を示す助動詞 (A) must が文脈に合います。"
+        },
+        {
+            "id": "Q094",
+            "text": "Please remember to ------- your personal belongings before leaving the lecture hall.",
+            "options": ["inspect", "recover", "retrieve", "reserve"],
+            "correctIndex": 2,
+            "translation": "講演会場を離れる前に、身の回り品を忘れずに回収してください。",
+            "explanation": "「回収する、取り戻す」という意味の (C) retrieve が適切です。"
+        },
+        {
+            "id": "Q095",
+            "text": "The company’s decision was deemed financially and ethically -------.",
+            "options": ["responsible", "responsibly", "responsibility", "responses"],
+            "correctIndex": 0,
+            "translation": "その会社の決定は、財政的にも倫理的にも責任がある（正当な）と見なされた。",
+            "explanation": "be動詞の後ろで主語の状態を表す形容詞が必要です。(A) responsible が正解です。"
+        },
+        {
+            "id": "Q096",
+            "text": "The new security system will provide protection ------- all types of external threats.",
+            "options": ["from", "against", "for", "with"],
+            "correctIndex": 1,
+            "translation": "新しいシステムは、あらゆる種類の外部の脅威に対して保護を提供するでしょう。",
+            "explanation": "protect ... against ... （〜に対して保護する）のコロケーションから (B) against が適切です。"
+        },
+        {
+            "id": "Q097",
+            "text": "The CEO will personally ------- the achievement awards to the top performers.",
+            "options": ["present", "presenter", "presentation", "presents"],
+            "correctIndex": 0,
+            "translation": "CEOは、優秀な成績を収めた人たちに、自ら業績表彰を授与する予定です。",
+            "explanation": "助動詞 will の後には動詞の原形が必要です。(A) present（授与する）が正解です。"
+        },
+        {
+            "id": "Q098",
+            "text": "The new policy ensures the ------- of information across all company departments.",
+            "options": ["fluency", "permeability", "flow", "dissemination"],
+            "correctIndex": 3,
+            "translation": "新しい方針は、すべての部署間での情報の普及を保証する。",
+            "explanation": "「情報の普及、伝達」という意味の (D) dissemination が最も適切です。"
+        },
+        {
+            "id": "Q099",
+            "text": "The report must be completed by Friday, ------- the manager will not approve it.",
+            "options": ["so that", "otherwise", "in addition", "even though"],
+            "correctIndex": 1,
+            "translation": "その報告書は金曜日までに完了しなければなりません。さもなければ、マネージャーは承認しないでしょう。",
+            "explanation": "「さもなければ」という条件の結果を示す (B) otherwise が適切です。"
+        },
+        {
+            "id": "Q100",
+            "text": "The cost of ------- the old office equipment was factored into the annual budget.",
+            "options": ["replacing", "replaces", "replace", "replaced"],
+            "correctIndex": 0,
+            "translation": "古いオフィス機器を交換するための費用は、年間予算に組み込まれた。",
+            "explanation": "前置詞 of の後には動名詞が必要です。(A) replacing が正解です。"
+        }
+    ];
+
+    // ---------------------------------------------------------
+    // システムのロジック部分
+    // ---------------------------------------------------------
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    
+    // タイマー・リトライ用変数
+    let timerInterval;
+    const TIME_LIMIT = 20; // 1問20秒
+    let wrongQuestions = []; // 間違えた問題を保存する配列
+
+    // 配列をシャッフルする関数
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // クイズ開始
+    // isRetry: trueなら「間違えた問題」モード、falseなら「通常」モード
+    function startQuiz(isRetry = false) {
+        if (isRetry) {
+            // 間違えた問題だけをシャッフルしてセット
+            currentQuestions = shuffle([...wrongQuestions]);
+            // リトライ開始時に間違えたリストは一旦クリア（この回で間違えたらまた追加される）
+            wrongQuestions = [];
+        } else {
+            // 通常モード：全問題からランダム10問
+            const shuffledPool = shuffle([...questionPool]);
+            currentQuestions = shuffledPool.slice(0, 10);
+            wrongQuestions = []; // 新規スタート時はリセット
+        }
+
+        if (currentQuestions.length === 0) {
+            alert("問題がありません。");
+            return;
+        }
+        
+        currentIndex = 0;
+        score = 0;
+        
+        // 合計問題数の表示更新
+        document.getElementById('total-q-num').textContent = currentQuestions.length;
+
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('quiz-container').classList.remove('hidden');
+        
+        loadQuestion();
+    }
+
+    // 問題の読み込み
+    function loadQuestion() {
+        const q = currentQuestions[currentIndex];
+        
+        document.getElementById('current-num').textContent = currentIndex + 1;
+        document.getElementById('question-text').textContent = q.text;
+        
+        // 解説エリアをリセット
+        document.getElementById('explanation-area').style.display = 'none';
+        document.getElementById('next-btn').classList.add('hidden');
+
+        // 選択肢の生成
+        const optionsList = document.getElementById('options-list');
+        optionsList.innerHTML = '';
+        
+        q.options.forEach((opt, index) => {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.textContent = `(${String.fromCharCode(65 + index)}) ${opt}`; // (A) xxx の形式
+            btn.onclick = () => checkAnswer(index, btn);
+            li.appendChild(btn);
+            optionsList.appendChild(li);
+        });
+
+        // タイマー開始
+        startTimer();
+    }
+
+    // タイマー開始関数
+    function startTimer() {
+        // 既存のタイマーがあればクリア
+        clearInterval(timerInterval);
+        
+        let timeLeft = TIME_LIMIT;
+        const timerDisplay = document.getElementById('timer-display');
+        timerDisplay.textContent = `残り ${timeLeft} 秒`;
+        timerDisplay.style.color = '#d9534f'; // 色を初期化
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = `残り ${timeLeft} 秒`;
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerDisplay.textContent = "時間切れ！";
+                // 時間切れの場合、引数 -1 を渡して不正解扱いにする
+                checkAnswer(-1, null);
+            }
+        }, 1000);
+    }
+
+    // 解答判定
+    // selectedIndex: 選んだ選択肢の番号 (-1は時間切れ)
+    // btnElement: 押されたボタン要素 (時間切れの場合はnull)
+    function checkAnswer(selectedIndex, btnElement) {
+        // タイマー停止
+        clearInterval(timerInterval);
+
+        const q = currentQuestions[currentIndex];
+        const buttons = document.querySelectorAll('.options button');
+        
+        // ボタンを無効化（連打防止）
+        buttons.forEach(b => b.disabled = true);
+
+        let isCorrect = false;
+
+        if (selectedIndex === q.correctIndex) {
+            // 正解
+            if (btnElement) btnElement.classList.add('correct-opt');
+            score++;
+            isCorrect = true;
+        } else {
+            // 不正解 または 時間切れ
+            if (btnElement) {
+                // 間違った選択肢を赤く
+                btnElement.classList.add('wrong-opt');
+            }
+            // 正解のボタンを緑に光らせる
+            buttons[q.correctIndex].classList.add('correct-opt');
+            
+            // 間違えた問題リストに追加
+            wrongQuestions.push(q);
+        }
+
+        // 解説の表示
+        document.getElementById('ans-key').textContent = `(${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex]}`;
+        document.getElementById('ans-trans').textContent = q.translation;
+        document.getElementById('ans-expl').textContent = q.explanation;
+        document.getElementById('explanation-area').style.display = 'block';
+        
+        // 次へボタン表示
+        document.getElementById('next-btn').classList.remove('hidden');
+    }
+
+    // 次の問題へ
+    function nextQuestion() {
+        currentIndex++;
+        if (currentIndex < currentQuestions.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    // 結果表示
+    function showResult() {
+        document.getElementById('quiz-container').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('score-display').textContent = `${score} / ${currentQuestions.length}`;
+
+        // リトライボタンの制御
+        const retryContainer = document.getElementById('retry-container');
+        retryContainer.innerHTML = ''; // クリア
+
+        if (wrongQuestions.length > 0) {
+            const msg = document.createElement('p');
+            msg.textContent = `今回間違えた問題が ${wrongQuestions.length} 問あります。`;
+            
+            const retryBtn = document.createElement('button');
+            retryBtn.className = 'btn-next btn-retry';
+            retryBtn.textContent = '間違えた問題だけ解く';
+            retryBtn.onclick = () => startQuiz(true); // リトライモードで開始
+
+            retryContainer.appendChild(msg);
+            retryContainer.appendChild(retryBtn);
+        } else {
+            const msg = document.createElement('p');
+            msg.textContent = "全問正解です！素晴らしい！";
+            retryContainer.appendChild(msg);
+        }
+    }
+</script>
+
+</body>
+</html>
